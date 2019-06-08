@@ -1,70 +1,54 @@
 <!DOCTYPE html>
+<?php 
+    include_once 'includes/admin.php';
+    $site = new admin;
+    $landNo = $site->allLandRows();
+    $allLands = $site->getLands('All',0,20);
+    $vacant = $site->getLands('Vacant',0,20);
+    $allocated = $site->getLands('Allocated',0,20);
+    $mapo = json_encode($site->getLandsForMap());
+
+  ?> 
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="">
-    <meta name="keywords" content="">
-
     <title>LandAfrica — Land Registry on the Blockchain</title>
-
-    <!-- Styles -->
-    <link href="assets/css/page.min.css" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
-
-    <!-- Favicons -->
-    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
-    <link rel="icon" href="assets/img/favicon.png">
+    <?php include_once 'includes/meta.php'; ?>
+    <style type="text/css">
+      #map_canvas {
+        height: 620px;  /* The height is 400 pixels */
+        width: 103%;  /* The width is the width of the web page */
+       }
+    </style>
   </head>
+  <!-- Modal - Default -->
+  <div class="modal fade" id="modal-long" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Detail</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
 
-  <body>
-    
+        <div class="modal-body" id="detail-map">
+          
+        </div>
+      </div>
+    </div>
+  </div>
+  <body onload="initialize()">
     <main class="main-content">
       <div class="section bg-gray p-0">
         <div class="p-5 mh-fullscreen">
           <div class="row">
-
-
             <div class="col-md-5 col-xl-4 pl-0 pr-0">
               <div class="sidebar px-4 py-md-0">
-
-                <nav class="navbar navbar-expand-lg navbar-dark" style="margin-top: -30px;">
-                  <div class="container">
-      
-                    <div class="navbar-left mr-4">
-                      <button class="navbar-toggler" type="button">☰</button>
-                      <a class="navbar-brand" href="#">
-                        <img class="logo-dark" src="assets/img/logo-dark.png" alt="logo">
-                        <img class="logo-light" src="assets/img/logo-light.png" alt="logo">
-                      </a>
-                    </div>
-      
-                    <section class="navbar-mobile">
-                      <nav class="nav nav-navbar mr-auto">
-                        <a class="nav-link active" href="#">About</a>
-                      </nav>
-      
-                      <div class="dropdown ml-lg-5">
-                        <span class="dropdown-toggle no-caret" data-toggle="dropdown" aria-expanded="false">
-                          <img class="avatar avatar-xs" src="assets/img/avatar/1.jpg" alt="user">
-                        </span>
-                        <div class="dropdown-menu dropdown-menu-right">
-                          <a class="dropdown-item" href="#">Profile</a>
-                          <a class="dropdown-item" href="#">Inbox</a>
-                          <a class="dropdown-item" href="#">Settings</a>
-                          <div class="dropdown-divider"></div>
-                          <a class="dropdown-item" href="#">Logout</a>
-                        </div>
-                      </div>
-                    </section>
-      
-                  </div>
-                </nav>
-
+                <?php include_once 'includes/header.php'; ?>
                 <hr>
 
-                <form class="form-group input-group input-round" target="#" method="GET" style="border:none!Important;">
-                  <input type="text" class="form-control" name="s" placeholder="Search">
+                <form class="form-group input-group input-round" style="border:none!Important;">
+                  <input type="text" class="form-control" name="s" placeholder="Search" id="land-search">
                   <div class="input-group-append">
                     <span class="input-group-text"><i class="ti-search"></i></span>
                   </div>
@@ -72,51 +56,132 @@
 
                 <ul class="nav nav-tabs-minimal">
                   <li class="nav-item">
-                    <a class="nav-link active" href="#">Active</a>
+                    <a class="nav-link active" data-toggle="tab" href="#tab-home-1">All</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" href="#">Link</a>
+                    <a class="nav-link" data-toggle="tab" href="#tab-profile-1">Allocated</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" href="#">Link</a>
+                    <a class="nav-link" data-toggle="tab" href="#tab-contact-1">Vacant</a>
                   </li>
                 </ul>
 
+                <div class="tab-content p-4">
+                  <div class="tab-pane fade show active" id="tab-home-1">
+                    <?php 
+                        if (count($allLands) < 1) {
+                           echo '<div class="col-md-12 col-sm-12 col-lg-12">
+                                     <center style="opacity: 0.3">
+                                         <i class="fa fa-search fa-3x"></i><br><br>
+                                         <h5>No result found</h5>
+                                     </center>
+                                 </div>'; 
+                        }else{
+                            foreach ($allLands as $key => $all) {
+                              $txt = $site->landStatus($all->status);
+                            ?>
+                                <div class="row tada hover-shadow-2">
+                                  <div class="col-2" style="padding-top: 4%">
+                                    <a href="#" onclick="changeMap(<?php echo $all->id ?>)" data-toggle="tooltip" title="View on map"><i class="fa fa-map-o fa-2x text-<?php echo $txt; ?>"></i></a>
+                                  </div>
+                                  <div class="col-8">
+                                    <a class="media text-default align-items-center" href="#" data-toggle="offcanvas" data-target="#offcanvas-left" onclick="viewInfo(<?php echo $all->id ?>)">
+                                      <h5><b><?php echo $all->landId ?></b></h5>
+                                    </a>
+                                    <a class="media text-default align-items-center" href="#" data-toggle="offcanvas" data-target="#offcanvas-left" onclick="viewInfo(<?php echo $all->id ?>)">
+                                      <small><?php echo $all->address ?></small>
+                                    </a>
+                                  </div>
+                                  <div class="col-2 text-right" style="padding-top: 4%">
+                                    <a href="<?php echo $all->txnLink ?>" target="_blank" data-toggle="tooltip" title="View on Blockchain" class="text-<?php echo $txt; ?> iconbox">
+                                      <i class="fa fa-file-o"></i>
+                                    </a>
+                                  </div>
+                                </div>
+                            <?php 
+                            }
+                        }
+                     ?>
+                  </div>
+                  <div class="tab-pane fade" id="tab-profile-1">
+                    <?php 
+                        if (count($allocated) < 1) {
+                           echo '<div class="col-md-12 col-sm-12 col-lg-12">
+                                     <center style="opacity: 0.3">
+                                         <i class="fa fa-search fa-3x"></i><br><br>
+                                         <h5>No result found</h5>
+                                     </center>
+                                 </div>'; 
+                        }else{
+                            foreach ($allocated as $key => $all) {
+                            ?>
+                                <div class="row tada hover-shadow-2">
+                                  <div class="col-2" style="padding-top: 4%">
+                                    <a href="#" onclick="changeMap(<?php echo $all->id ?>)" data-toggle="tooltip" title="View on map"><i class="fa fa-map-o fa-2x text-info"></i></a>
+                                  </div>
+                                  <div class="col-8">
+                                    <a class="media text-default align-items-center" href="#" data-toggle="offcanvas" data-target="#offcanvas-left" onclick="viewInfo(<?php echo $all->id ?>)">
+                                      <h5><b><?php echo $all->landId ?></b></h5>
+                                    </a>
+                                    <a class="media text-default align-items-center" href="#" data-toggle="offcanvas" data-target="#offcanvas-left" onclick="viewInfo(<?php echo $all->id ?>)">
+                                      <small><?php echo $all->address ?></small>
+                                    </a>
+                                  </div>
+                                  <div class="col-2 text-right" style="padding-top: 4%">
+                                    <a href="<?php echo $all->txnLink ?>" target="_blank" data-toggle="tooltip" title="View on Blockchain" class="text-info iconbox">
+                                      <i class="fa fa-file-o"></i>
+                                    </a>
+                                  </div>
+                                </div>
+                            <?php 
+                            }
+                        }
+                     ?>
+                  </div>
+                  <div class="tab-pane fade" id="tab-contact-1">
+                    <?php 
+                        if (count($vacant) < 1) {
+                           echo '<div class="col-md-12 col-sm-12 col-lg-12">
+                                     <center style="opacity: 0.3">
+                                         <i class="fa fa-search fa-3x"></i><br><br>
+                                         <h5>No result found</h5>
+                                     </center>
+                                 </div>'; 
+                        }else{
+                            foreach ($vacant as $key => $all) {
+                            ?>
+                                <div class="row tada hover-shadow-2">
+                                  <div class="col-2" style="padding-top: 4%">
+                                    <a href="#" onclick="changeMap(<?php echo $all->id ?>)" data-toggle="tooltip" title="View on map"><i class="fa fa-map-o fa-2x text-warning"></i></a>
+                                  </div>
+                                  <div class="col-8">
+                                    <a class="media text-default align-items-center" href="#" data-toggle="offcanvas" data-target="#offcanvas-left" onclick="viewInfo(<?php echo $all->id ?>)">
+                                      <h5><b><?php echo $all->landId ?></b></h5>
+                                    </a>
+                                    <a class="media text-default align-items-center" href="#" data-toggle="offcanvas" data-target="#offcanvas-left" onclick="viewInfo(<?php echo $all->id ?>)">
+                                      <small><?php echo $all->address ?></small>
+                                    </a>
+                                  </div>
+                                  <div class="col-2 text-right" style="padding-top: 4%">
+                                    <a href="<?php echo $all->txnLink ?>" target="_blank" data-toggle="tooltip" title="View on Blockchain" class="text-warning iconbox">
+                                      <i class="fa fa-file-o"></i>
+                                    </a>
+                                  </div>
+                                </div>
+                            <?php 
+                            }
+                        }
+                     ?>
+                  </div>
+                </div>
+
                 <hr class="mt-2">
-
-                <a class="media text-default align-items-center mb-5" href="#" data-toggle="offcanvas" data-target="#offcanvas-left">
-                  <img class="rounded w-65px mr-4" src="assets/img/thumb/4.jpg">
-                  <p class="media-body small-2 lh-4 mb-0">Thank to Maryam for joining our team</p>
-                </a>
-
-                <a class="media text-default align-items-center mb-5" href="#">
-                  <img class="rounded w-65px mr-4" src="assets/img/thumb/3.jpg">
-                  <p class="media-body small-2 lh-4 mb-0">Best practices for minimalist design</p>
-                </a>
-
-                <a class="media text-default align-items-center mb-5" href="#">
-                  <img class="rounded w-65px mr-4" src="assets/img/thumb/3.jpg">
-                  <p class="media-body small-2 lh-4 mb-0">Best practices for minimalist design</p>
-                </a>
-
-                <a class="media text-default align-items-center mb-5" href="#">
-                  <img class="rounded w-65px mr-4" src="assets/img/thumb/3.jpg">
-                  <p class="media-body small-2 lh-4 mb-0">Best practices for minimalist design</p>
-                </a>
-
-                <a class="media text-default align-items-center mb-5" href="#">
-                  <img class="rounded w-65px mr-4" src="assets/img/thumb/3.jpg">
-                  <p class="media-body small-2 lh-4 mb-0">Best practices for minimalist design</p>
-                </a>
 
               </div>
             </div>
-
-
-
-            <div class="col-md-7 col-xl-8 sticky" style="margin: -5px -5px;">
-              <div class="row gap-y">
-                <canvas class="w-100 mh-fullscreen" data-granim="#834d9b,#d04ed6,#1cd8d2,#93edc7" data-direction="top-bottom"></canvas>
+            <div class="col-md-7 col-xl-8 sticky" style="margin: -9px -9px;">
+              <div class="gap-y" id="map_canvas">
+                
               </div>
             </div>
 
@@ -130,25 +195,165 @@
         <span aria-hidden="true">×</span>
       </button>
 
-      <nav class="nav nav-lead flex-column my-7">
-        <a class="nav-link" href="#">Features</a>
-        <a class="nav-link" href="#">Pricing</a>
-        <a class="nav-link" href="#">Shop</a>
-        <a class="nav-link" href="#">Blog</a>
-        <a class="nav-link" href="#">About</a>
-        <a class="nav-link" href="#">Contact</a>
+      <nav class="nav nav-lead flex-column my-3" id="land-area">
+        
       </nav>
-
-      <div class="social social-bg-gray">
-        <a class="social-facebook" href="#"><i class="fa fa-facebook"></i></a>
-        <a class="social-twitter" href="#"><i class="fa fa-twitter"></i></a>
-        <a class="social-instagram" href="#"><i class="fa fa-instagram"></i></a>
-      </div>
     </div>
 
     <!-- Scripts -->
     <script src="assets/js/page.min.js"></script>
     <script src="assets/js/script.js"></script>
+    <script>
+        var map;
+        var myStyle = [
+                {
+                    "featureType": "all",
+                    "elementType": "labels.text",
+                    "stylers": [
+                        {
+                            "visibility": "off"
+                        }
+                    ]
+                },
+            ];
 
+        function initialize() {
+          var mapOptions = {
+            center: new google.maps.LatLng(4.8156, 7.0498),
+            zoom: 14,
+            mapTypeId: 'roadmap'
+          };
+          map = new google.maps.Map(document.getElementById("map_canvas"),
+            mapOptions);
+          map.set('styles',myStyle);
+          var json1 = <?php echo $mapo ?>;
+          //console.log(json1)
+          $.each(json1, function(key, data) {
+                var bermudaTriangle = new google.maps.Polygon({
+                  paths: data.cords,
+                  strokeColor: data.color,
+                  strokeOpacity: 0.8,
+                  strokeWeight: 1,
+                  fillColor: data.color,
+                  fillOpacity: 0.5,
+                });
+                google.maps.event.addListener(bermudaTriangle,'click',function() {
+                  map.setZoom(16);
+                  map.setCenter(bermudaTriangle.getPath());
+                  $('#modal-long').modal('show');
+                  viewInfoMap(data.id);
+                });
+                bermudaTriangle.setMap(map);
+          });
+        }
+
+        function changeMap(id){
+            event.preventDefault();
+          $.ajax({
+              url:"includes/changeMapData",
+              method:"POST",
+              data:{id:id},
+              success:function(data){
+                var myData = JSON.parse(data);
+                var mapOptions = {
+                    center: new google.maps.LatLng(myData.lat, myData.lng),
+                    zoom: 17,
+                    mapTypeId: 'roadmap'
+                  };
+                  map = new google.maps.Map(document.getElementById("map_canvas"),
+                    mapOptions);
+                  map.set('styles',myStyle);
+                var bermudaTriangle = new google.maps.Polygon({
+                  paths: myData.cords,
+                  strokeColor: myData.color,
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  fillColor: myData.color,
+                  fillOpacity: 0.5,
+                });
+                google.maps.event.addListener(bermudaTriangle,'click',function() {
+                  $('#modal-long').modal('show');
+                  viewInfoMap(myData.id);
+                });
+                 bermudaTriangle.setMap(map);             
+             },error : function(e){
+                    console.log(e);
+               }
+          });
+        }
+    </script>
+    <script type="text/javascript">
+            $("#klose").on('click', function(e){
+                $(".vipform").slideUp();
+            });
+            function viewInfo(id) {
+                event.preventDefault();
+                $("#land-area").html('<center><i class="fa fa-spinner fa-spin fa-3x"></i></center>');
+                $.ajax({
+                  url:"includes/fetchDetail",
+                  method:"POST",
+                  data:{id:id},
+                  success:function(data){
+                    $("#land-area").html(data);             
+                 },error : function(e){
+                        console.log(e);
+                    }
+              });
+            }
+
+            function viewInfoMap(id) {
+                event.preventDefault();
+                $("#detail-map").html('<center><i class="fa fa-spinner fa-spin fa-3x"></i></center>');
+                $.ajax({
+                  url:"includes/fetchDetail",
+                  method:"POST",
+                  data:{id:id},
+                  success:function(data){
+                    $("#detail-map").html(data);             
+                 },error : function(e){
+                        console.log(e);
+                    }
+              });
+            }
+
+            $("#land-search").on('input',function(e){
+                var searchWord = $("#land-search").val();
+                $.ajax({
+                  url:"includes/searchAll",
+                  method:"POST",
+                  data:{searchWord:searchWord},
+                  success:function(data){
+                    $("#tab-home-1").html(data);             
+                 },error : function(e){
+                        console.log(e);
+                    }
+              });
+              $.ajax({
+                  url:"includes/searchVacant",
+                  method:"POST",
+                  data:{searchWord:searchWord},
+                  success:function(data){
+                    $("#tab-contact-1").html(data);             
+                    $("#pagin").slideUp();             
+                 },error : function(e){
+                        console.log(e);
+                    }
+              });
+              $.ajax({
+                  url:"includes/searchAllocated",
+                  method:"POST",
+                  data:{searchWord:searchWord},
+                  success:function(data){
+                    $("#tab-profile-1").html(data);             
+                 },error : function(e){
+                        console.log(e);
+                    }
+              });
+            });
+            $(document).ready(function(){
+              $('[data-toggle="tooltip"]').tooltip(); 
+            });
+        </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBhEgGRLiCyeeXLFDP6C5bp4UxmbZ1JKSs"></script>
   </body>
 </html>
